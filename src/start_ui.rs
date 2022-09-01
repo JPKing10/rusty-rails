@@ -1,4 +1,4 @@
-
+use crate::consts::*;
 use bevy::{
     prelude::*,
     winit::WinitSettings
@@ -9,8 +9,9 @@ pub struct StartUI;
 impl Plugin for StartUI {
     fn build(&self, app: &mut App) {
         app.insert_resource(WinitSettings::desktop_app())
-            .add_startup_system(setup)
-            .add_system(button_system);
+            .add_system_set(SystemSet::on_update(AppState::Menu).with_system(system))
+            .add_system_set(SystemSet::on_enter(AppState::Menu).with_system(enter))
+            .add_system_set(SystemSet::on_exit(AppState::Menu).with_system(exit));
     }
 }
 
@@ -20,7 +21,7 @@ const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
 const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.35, 0.35);
 const BUTTON_TEXT: Color = Color::rgb(0.9, 0.9, 0.9);
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn enter(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn_bundle(Camera2dBundle::default());
     commands
         .spawn_bundle(ButtonBundle {
@@ -46,14 +47,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
-fn button_system(mut interaction_query: Query<(&Interaction, &mut UiColor, &Children), (Changed<Interaction>, With<Button>)>,
-                 mut text_query: Query<&mut Text>, app: &mut App) {
-    for (interaction, mut color, children) in &mut interaction_query {
-        let mut text = text_query.get_mut(children[0]).unwrap();
+fn system(mut interaction_query: Query<(&Interaction, &mut UiColor, &Children), (Changed<Interaction>, With<Button>)>,
+                mut  app_state: ResMut<State<AppState>>) {
+    for (interaction, mut color, _children) in &mut interaction_query {
         match *interaction {
             Interaction::Clicked => {
                 *color = PRESSED_BUTTON.into();
-                app.add_plugin(rail_me::Level1);
+                app_state.set(AppState::Game).unwrap();
             }
             Interaction::Hovered => {
                 *color = HOVERED_BUTTON.into();
@@ -63,4 +63,11 @@ fn button_system(mut interaction_query: Query<(&Interaction, &mut UiColor, &Chil
             }
         }
     }
+}
+
+fn exit(mut commands: Commands, mut entities: Query<Entity>) {
+    for entity in &mut entities {
+        commands.entity(entity).despawn();
+    }
+    
 }
